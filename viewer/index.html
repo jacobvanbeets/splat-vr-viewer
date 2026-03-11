@@ -288,7 +288,7 @@
             </symbol>
         </svg>
 
-        <!-- Application Script — loads splat data via pywebview JS API bridge -->
+        <!-- Application Script — auto-loads splat data from localhost HTTP server -->
         <script type="module">
             import { main } from './viewer.js';
 
@@ -296,46 +296,23 @@
             const splashStatus = document.getElementById('splashStatus');
             const pcApp = document.querySelector('pc-app');
 
-            // Wait for the pywebview bridge to be available
-            function waitForBridge() {
-                return new Promise((resolve) => {
-                    if (window.pywebview && window.pywebview.api) {
-                        resolve();
-                        return;
-                    }
-                    window.addEventListener('pywebviewready', resolve, { once: true });
-                });
-            }
-
             async function autoLoad() {
-                splashStatus.textContent = 'Connecting to LichtFeld Studio…';
-                await waitForBridge();
+                // Fetch metadata written by the Python launcher
+                splashStatus.textContent = 'Loading configuration…';
+                const configResp = await fetch('./_config.json');
+                if (!configResp.ok) throw new Error('Failed to load _config.json');
+                const config = await configResp.json();
 
-                // Get metadata from the Python bridge
-                const nodeName = await window.pywebview.api.get_node_name();
+                const nodeName = config.nodeName;
+                const settingsJson = config.settings;
                 splashStatus.textContent = `Loading ${nodeName}…`;
 
-                // Get settings
-                const settingsJson = await window.pywebview.api.get_settings();
-
-                // Get the PLY data as base64 and decode to an ArrayBuffer
-                splashStatus.textContent = 'Transferring splat data…';
-                const base64 = await window.pywebview.api.get_splat_base64();
-                const binaryString = atob(base64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Wrap in a Response object (same interface as fetch() returns)
-                const blob = new Blob([bytes], { type: 'application/octet-stream' });
-                const response = new Response(blob, {
-                    headers: { 'Content-Length': blob.size.toString() }
-                });
+                // Fetch the PLY directly from the same HTTP server
+                splashStatus.textContent = 'Loading splat data…';
 
                 const sseConfig = {
-                    contentUrl: 'splat.ply',
-                    contents: Promise.resolve(response),
+                    contentUrl: '_export.ply',
+                    contents: fetch('./_export.ply'),
                     noui: false,
                     noanim: false,
                     ministats: false,

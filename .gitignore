@@ -5,3 +5,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv/
+
+# Runtime files (written by launcher, cleaned up by plugin)
+viewer/_export.ply
+viewer/_config.json

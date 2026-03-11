@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Splat VR Viewer panel — export the active splat and view in a native window."""
 
-import tempfile
 import threading
 from pathlib import Path
 from typing import Optional
@@ -9,6 +8,7 @@ from typing import Optional
 import lichtfeld as lf
 from lfs_plugins.types import RmlPanel
 
+from ..core import cleanup_temp_files, get_temp_ply_path
 from ..core.launcher import launch_viewer, close_viewer, is_viewer_open
 
 # Viewer web assets directory (sibling of panels/)
@@ -66,6 +66,7 @@ class SplatVrViewerPanel(RmlPanel):
 
         # Detect if the webview window was closed externally
         if not is_viewer_open() and self._status == "Viewer running":
+            cleanup_temp_files()
             self._status = "Viewer closed"
             self._dirty_all()
 
@@ -143,16 +144,16 @@ class SplatVrViewerPanel(RmlPanel):
                 self._dirty_all()
                 return
 
-            # Export to temp file
-            temp_dir = tempfile.gettempdir()
-            temp_path = str(Path(temp_dir) / "lf_vr_viewer_splat.ply")
+            # Clean up previous export before writing a new one
+            cleanup_temp_files()
+            temp_path = get_temp_ply_path()
             lf.io.save_ply(splat_data, temp_path)
             self._temp_ply = temp_path
 
             self._status = "Launching viewer…"
             self._dirty_all()
 
-            # Open native window (data is transferred via pywebview JS bridge)
+            # Start HTTP server and open viewer in default browser
             launch_viewer(temp_path, self._target_name, _VIEWER_DIR)
 
             self._status = "Viewer running"
@@ -191,6 +192,7 @@ class SplatVrViewerPanel(RmlPanel):
     def _on_stop(self, _handle, _ev, _args):
         """Close the viewer window."""
         close_viewer()
+        cleanup_temp_files()
         self._status = "Stopped"
         self._is_error = False
         self._dirty_all()
