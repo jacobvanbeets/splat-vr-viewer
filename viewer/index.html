@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>Gaussian Splat Viewer</title>
+        <title>Splat VR Viewer</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <base href="">
         <link rel="stylesheet" href="./viewer.css">
         <style>
-            /* File picker overlay */
-            #filePicker {
+            /* Loading splash shown while data transfers from Python bridge */
+            #splash {
                 position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+                inset: 0;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -23,121 +19,26 @@
                 font-family: "Arial", sans-serif;
                 color: #e0e0e0;
             }
-
-            #filePicker h1 {
-                font-size: 28px;
-                margin-bottom: 8px;
-                color: #fff;
-            }
-
-            #filePicker p {
-                font-size: 14px;
-                color: #999;
-                margin-bottom: 32px;
-            }
-
-            #dropZone {
-                width: 420px;
-                max-width: 90vw;
-                padding: 48px 32px;
-                border: 2px dashed #555;
-                border-radius: 16px;
-                text-align: center;
-                cursor: pointer;
-                transition: border-color 0.2s, background 0.2s;
-                background: rgba(255, 255, 255, 0.03);
-            }
-
-            #dropZone:hover, #dropZone.dragover {
-                border-color: #F60;
-                background: rgba(255, 102, 0, 0.06);
-            }
-
-            #dropZone .icon {
-                font-size: 48px;
-                margin-bottom: 16px;
-                opacity: 0.6;
-            }
-
-            #dropZone .label {
-                font-size: 16px;
-                color: #ccc;
-                margin-bottom: 8px;
-            }
-
-            #dropZone .sublabel {
-                font-size: 13px;
-                color: #777;
-            }
-
-            #fileInput {
-                display: none;
-            }
-
-            /* Loading state on the picker */
-            #filePicker .loading-msg {
-                display: none;
-                margin-top: 20px;
-                font-size: 14px;
-                color: #F60;
-            }
-            #filePicker.loading .loading-msg {
-                display: block;
-            }
-            #filePicker.loading #dropZone {
-                pointer-events: none;
-                opacity: 0.4;
-            }
-
-            /* Re-open file button (shown after viewer loads) */
-            #reopenBtn {
-                position: fixed;
-                top: max(12px, env(safe-area-inset-top));
-                left: max(12px, env(safe-area-inset-left));
-                z-index: 100;
-                padding: 8px 14px;
-                border: none;
-                border-radius: 6px;
-                background: rgba(40, 40, 40, 0.7);
-                color: #e0e0e0;
-                font-size: 13px;
-                cursor: pointer;
-                backdrop-filter: blur(4px);
-                display: none;
-                pointer-events: auto;
-            }
-            #reopenBtn:hover {
-                background: rgba(60, 60, 60, 0.9);
-                color: #fff;
-            }
+            #splash h1  { font-size: 24px; margin-bottom: 8px; color: #fff; }
+            #splash .status { font-size: 14px; color: #F60; }
         </style>
     </head>
     <body>
-        <!-- File Picker Overlay -->
-        <div id="filePicker">
-            <h1>Gaussian Splat Viewer</h1>
-            <p>View .PLY and .SOG gaussian splat files — with VR support</p>
-            <div id="dropZone">
-                <div class="icon">📂</div>
-                <div class="label">Click to select or drag &amp; drop a file</div>
-                <div class="sublabel">Supports .ply, .compressed.ply, .sog, .splat, .spz</div>
-            </div>
-            <input type="file" id="fileInput" accept=".ply,.sog,.splat,.spz">
-            <div class="loading-msg">Loading splat…</div>
+        <!-- Loading splash -->
+        <div id="splash">
+            <h1>Splat VR Viewer</h1>
+            <div class="status" id="splashStatus">Waiting for data…</div>
         </div>
 
-        <!-- PlayCanvas Viewer (hidden until file loaded) -->
+        <!-- PlayCanvas Viewer (hidden until loaded) -->
         <pc-app antialias="false" depth="true" high-resolution="true" stencil="false" hidden>
             <pc-scene>
-                <!-- Camera (with XR support) -->
                 <pc-entity name="camera root">
                     <pc-entity name="camera"></pc-entity>
                 </pc-entity>
-                <!-- Light (for XR controllers) -->
                 <pc-entity name="light" rotation="35 45 0">
                     <pc-light color="white" intensity="1.5"></pc-light>
                 </pc-entity>
-                <!-- Splat -->
                 <pc-entity name="splat" rotation="0 0 180">
                 </pc-entity>
             </pc-scene>
@@ -145,23 +46,18 @@
 
         <div id="ui">
             <div id="poster"></div>
-
-            <!-- Loading Indicator -->
             <div id="loadingWrap">
                 <div id="loadingText"></div>
                 <div id="loadingBar"></div>
             </div>
 
             <div id="controlsWrap" class="faded-in">
-
-                <!-- Timeline Panel -->
                 <div id="timelineContainer" class="hidden">
                     <div id="line"></div>
                     <div id="handle"></div>
                     <div id="time" class="hidden">0:00</div>
                 </div>
 
-                <!-- Buttons Panel -->
                 <div id="buttonsContainer">
                     <button id="play" class="controlButton hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
@@ -339,13 +235,10 @@
             <div id="tooltip"></div>
         </div>
 
-        <!-- Re-open file button (visible after first load) -->
-        <button id="reopenBtn">Open File</button>
-
         <!-- Debug overlay for VR diagnostics -->
         <div id="xrDebug" style="position:fixed;top:8px;right:8px;z-index:10000;background:rgba(0,0,0,0.85);color:#0f0;font:13px monospace;padding:10px 14px;border-radius:8px;pointer-events:none;white-space:pre;display:none;"></div>
 
-        <!-- SVG Icons (copied from supersplat-viewer) -->
+        <!-- SVG Icons -->
         <svg>
             <symbol id="playIcon" viewBox="-2 0 24 24">
                 <path
@@ -395,144 +288,85 @@
             </symbol>
         </svg>
 
-        <!-- Application Script -->
+        <!-- Application Script — loads splat data via pywebview JS API bridge -->
         <script type="module">
             import { main } from './viewer.js';
 
-            const filePicker = document.getElementById('filePicker');
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
-            const reopenBtn = document.getElementById('reopenBtn');
+            const splash = document.getElementById('splash');
+            const splashStatus = document.getElementById('splashStatus');
             const pcApp = document.querySelector('pc-app');
 
-            let viewer = null;
-            let currentBlobUrl = null;
-
-            // --- Auto-load from query param ---
-            const params = new URLSearchParams(window.location.search);
-            const autoFileUrl = params.get('file');
-
-            if (autoFileUrl) {
-                // Auto-load mode: skip file picker, load directly
-                loadFromUrl(autoFileUrl, params.get('name') || 'splat');
-            } else {
-                // Manual mode: show file picker
-                setupFilePicker();
-            }
-
-            function setupFilePicker() {
-                dropZone.addEventListener('click', () => fileInput.click());
-
-                dropZone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    dropZone.classList.add('dragover');
-                });
-
-                dropZone.addEventListener('dragleave', () => {
-                    dropZone.classList.remove('dragover');
-                });
-
-                dropZone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    dropZone.classList.remove('dragover');
-                    const file = e.dataTransfer.files[0];
-                    if (file) loadFile(file);
-                });
-
-                fileInput.addEventListener('change', () => {
-                    const file = fileInput.files[0];
-                    if (file) loadFile(file);
-                });
-
-                reopenBtn.addEventListener('click', () => {
-                    location.reload();
+            // Wait for the pywebview bridge to be available
+            function waitForBridge() {
+                return new Promise((resolve) => {
+                    if (window.pywebview && window.pywebview.api) {
+                        resolve();
+                        return;
+                    }
+                    window.addEventListener('pywebviewready', resolve, { once: true });
                 });
             }
 
-            async function loadFromUrl(url, name) {
-                filePicker.classList.add('loading');
+            async function autoLoad() {
+                splashStatus.textContent = 'Connecting to LichtFeld Studio…';
+                await waitForBridge();
+
+                // Get metadata from the Python bridge
+                const nodeName = await window.pywebview.api.get_node_name();
+                splashStatus.textContent = `Loading ${nodeName}…`;
+
+                // Get settings
+                const settingsJson = await window.pywebview.api.get_settings();
+
+                // Get the PLY data as base64 and decode to an ArrayBuffer
+                splashStatus.textContent = 'Transferring splat data…';
+                const base64 = await window.pywebview.api.get_splat_base64();
+                const binaryString = atob(base64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Wrap in a Response object (same interface as fetch() returns)
+                const blob = new Blob([bytes], { type: 'application/octet-stream' });
+                const response = new Response(blob, {
+                    headers: { 'Content-Length': blob.size.toString() }
+                });
 
                 const sseConfig = {
-                    contentUrl: url,
-                    contents: fetch(url),
+                    contentUrl: 'splat.ply',
+                    contents: Promise.resolve(response),
                     noui: false,
                     noanim: false,
                     ministats: false,
                     colorize: false,
                     unified: false,
-                    aa: false
+                    aa: false,
                 };
 
-                let settingsJson;
-                try {
-                    const resp = await fetch('./settings.json');
-                    settingsJson = await resp.json();
-                } catch {
-                    settingsJson = {
-                        camera: { fov: 60, startAnim: 'none', animTrack: null },
-                        background: { color: [0.2, 0.2, 0.2] },
-                        animTracks: []
-                    };
-                }
-
+                // Show the PlayCanvas app
                 pcApp.removeAttribute('hidden');
-
                 const [appElement, cameraElement] = await Promise.all([
                     pcApp.ready(),
-                    document.querySelector('pc-entity[name="camera"]').ready()
+                    document.querySelector('pc-entity[name="camera"]').ready(),
                 ]);
 
-                filePicker.style.display = 'none';
+                splash.style.display = 'none';
 
-                viewer = await main(appElement.app, cameraElement.entity, settingsJson, sseConfig);
-                document.title = `${name} — Gaussian Splat Viewer`;
+                const viewer = await main(
+                    appElement.app,
+                    cameraElement.entity,
+                    settingsJson,
+                    sseConfig,
+                );
+                document.title = `${nodeName} — Splat VR Viewer`;
             }
 
-            async function loadFile(file) {
-                filePicker.classList.add('loading');
-
-                if (currentBlobUrl) {
-                    URL.revokeObjectURL(currentBlobUrl);
-                }
-
-                currentBlobUrl = URL.createObjectURL(file);
-
-                const sseConfig = {
-                    contentUrl: currentBlobUrl,
-                    contents: fetch(currentBlobUrl),
-                    noui: false,
-                    noanim: false,
-                    ministats: false,
-                    colorize: false,
-                    unified: false,
-                    aa: false
-                };
-
-                let settingsJson;
-                try {
-                    const resp = await fetch('./settings.json');
-                    settingsJson = await resp.json();
-                } catch {
-                    settingsJson = {
-                        camera: { fov: 60, startAnim: 'none', animTrack: null },
-                        background: { color: [0.2, 0.2, 0.2] },
-                        animTracks: []
-                    };
-                }
-
-                pcApp.removeAttribute('hidden');
-
-                const [appElement, cameraElement] = await Promise.all([
-                    pcApp.ready(),
-                    document.querySelector('pc-entity[name="camera"]').ready()
-                ]);
-
-                filePicker.style.display = 'none';
-                reopenBtn.style.display = 'block';
-
-                viewer = await main(appElement.app, cameraElement.entity, settingsJson, sseConfig);
-                document.title = `${file.name} — Gaussian Splat Viewer`;
-            }
+            autoLoad().catch((err) => {
+                console.error('Splat VR Viewer: failed to load', err);
+                splashStatus.textContent = `Error: ${err.message}`;
+                splashStatus.style.color = '#f44';
+            });
         </script>
     </body>
 </html>

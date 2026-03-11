@@ -26,11 +26,6 @@
     <span class="svr-value" data-class-status-error="is_error">{{status_text}}</span>
   </div>
 
-  <div data-if="show_server_url" class="svr-section">
-    <span class="svr-label">Server:</span>
-    <span class="svr-value svr-mono">{{server_url}}</span>
-  </div>
-
   <div class="separator"></div>
 
   <div class="svr-buttons">

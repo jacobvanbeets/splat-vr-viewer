@@ -35,11 +35,6 @@ body.svr-panel {
     color: #585b70;
 }
 
-.svr-mono {
-    font-size: 10dp;
-    color: #94e2d5;
-}
-
 .status-error {
     color: #f38ba8;
 }

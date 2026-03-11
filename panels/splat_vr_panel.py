@@ -9,7 +9,6 @@ from typing import Optional
 import lichtfeld as lf
 from lfs_plugins.types import RmlPanel
 
-from ..core.server import ViewerServer
 from ..core.launcher import launch_viewer, close_viewer, is_viewer_open
 
 # Viewer web assets directory (sibling of panels/)
@@ -28,7 +27,6 @@ class SplatVrViewerPanel(RmlPanel):
 
     def __init__(self):
         self._handle = None
-        self._server = ViewerServer()
         self._status = "Ready"
         self._is_error = False
         self._target_name = ""
@@ -36,7 +34,7 @@ class SplatVrViewerPanel(RmlPanel):
         self._temp_ply: Optional[str] = None
         self._exporting = False
 
-    # ── Data Model ───────────────────────────────────────────
+    # ── Data Model ───────────────────────────────────────────────────
 
     def on_bind_model(self, ctx):
         model = ctx.create_data_model("splat_vr_viewer")
@@ -49,12 +47,10 @@ class SplatVrViewerPanel(RmlPanel):
         model.bind_func("has_target", lambda: bool(self._target_name))
         model.bind_func("status_text", lambda: self._status)
         model.bind_func("is_error", lambda: self._is_error)
-        model.bind_func("is_running", lambda: self._server.running)
-        model.bind_func("show_server_url", lambda: self._server.running)
-        model.bind_func("server_url", lambda: self._server.url)
+        model.bind_func("is_running", lambda: is_viewer_open())
         model.bind_func("launch_label", lambda: "Launch VR Viewer")
         model.bind_func("refresh_label", lambda: "Re-export & Refresh")
-        model.bind_func("stop_label", lambda: "Stop Viewer")
+        model.bind_func("stop_label", lambda: "Close Viewer")
 
         model.bind_event("launch", self._on_launch)
         model.bind_event("refresh", self._on_refresh)
@@ -69,8 +65,7 @@ class SplatVrViewerPanel(RmlPanel):
         self._refresh_target()
 
         # Detect if the webview window was closed externally
-        if self._server.running and not is_viewer_open() and not self._exporting:
-            self._server.stop()
+        if not is_viewer_open() and self._status == "Viewer running":
             self._status = "Viewer closed"
             self._dirty_all()
 
@@ -79,7 +74,7 @@ class SplatVrViewerPanel(RmlPanel):
     def on_scene_changed(self, doc):
         self._refresh_target()
 
-    # ── Internals ────────────────────────────────────────────
+    # ── Internals ────────────────────────────────────────────────────
 
     def _dirty_all(self):
         if self._handle:
@@ -133,9 +128,9 @@ class SplatVrViewerPanel(RmlPanel):
         return node.splat_data()
 
     def _export_and_launch(self):
-        """Export the splat to a temp PLY and launch the viewer."""
+        """Export the splat to a temp PLY and open the viewer."""
         self._exporting = True
-        self._status = "Exporting PLY..."
+        self._status = "Exporting PLY…"
         self._is_error = False
         self._dirty_all()
 
@@ -154,22 +149,11 @@ class SplatVrViewerPanel(RmlPanel):
             lf.io.save_ply(splat_data, temp_path)
             self._temp_ply = temp_path
 
-            self._status = "Starting server..."
+            self._status = "Launching viewer…"
             self._dirty_all()
 
-            # Start server
-            base_url = self._server.start(_VIEWER_DIR, temp_path)
-            viewer_url = (
-                f"{base_url}/index.html"
-                f"?file=/splat_file"
-                f"&name={self._target_name}"
-            )
-
-            self._status = "Launching viewer..."
-            self._dirty_all()
-
-            # Open native window
-            launch_viewer(viewer_url, f"{self._target_name} — Splat VR Viewer")
+            # Open native window (data is transferred via pywebview JS bridge)
+            launch_viewer(temp_path, self._target_name, _VIEWER_DIR)
 
             self._status = "Viewer running"
             self._is_error = False
@@ -186,7 +170,6 @@ class SplatVrViewerPanel(RmlPanel):
         """Handle launch button click."""
         if self._exporting:
             return
-        # Run export in background to avoid blocking the UI thread
         thread = threading.Thread(
             target=self._export_and_launch,
             daemon=True,
@@ -195,7 +178,7 @@ class SplatVrViewerPanel(RmlPanel):
         thread.start()
 
     def _on_refresh(self, _handle, _ev, _args):
-        """Re-export the current splat and refresh the viewer."""
+        """Re-export the current splat and reopen the viewer."""
         if self._exporting:
             return
         thread = threading.Thread(
@@ -206,9 +189,8 @@ class SplatVrViewerPanel(RmlPanel):
         thread.start()
 
     def _on_stop(self, _handle, _ev, _args):
-        """Stop the viewer and server."""
+        """Close the viewer window."""
         close_viewer()
-        self._server.stop()
         self._status = "Stopped"
         self._is_error = False
         self._dirty_all()
