@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 
 import lichtfeld as lf
-from lfs_plugins.types import RmlPanel
 
 from ..core import cleanup_temp_files, get_temp_ply_path
 from ..core.launcher import launch_viewer, close_viewer, is_viewer_open
@@ -15,14 +14,14 @@ from ..core.launcher import launch_viewer, close_viewer, is_viewer_open
 _VIEWER_DIR = Path(__file__).resolve().parent.parent / "viewer"
 
 
-class SplatVrViewerPanel(RmlPanel):
+class SplatVrViewerPanel(lf.ui.Panel):
     """Panel for launching the Gaussian Splat VR viewer."""
 
-    idname = "splat_vr_viewer.main_panel"
+    id = "splat_vr_viewer.main_panel"
     label = "Splat VR Viewer"
-    space = "MAIN_PANEL_TAB"
+    space = lf.ui.PanelSpace.MAIN_PANEL_TAB
     order = 110
-    rml_template = str(Path(__file__).resolve().with_name("splat_vr_panel.rml"))
+    template = str(Path(__file__).resolve().with_name("splat_vr_panel.rml"))
     update_interval_ms = 500
 
     def __init__(self):
@@ -58,7 +57,7 @@ class SplatVrViewerPanel(RmlPanel):
 
         self._handle = model.get_handle()
 
-    def on_load(self, doc):
+    def on_mount(self, doc):
         pass
 
     def on_update(self, doc):
