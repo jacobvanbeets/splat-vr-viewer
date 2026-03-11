@@ -2,7 +2,7 @@
 name = "splat_vr_viewer"
 version = "0.1.0"
 description = "View Gaussian Splats from LichtFeld Studio in a VR-ready viewer window"
-dependencies = ["pywebview>=5.0"]
+dependencies = []
 
 [tool.lichtfeld]
 hot_reload = true
