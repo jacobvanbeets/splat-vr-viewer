@@ -1,0 +1,51 @@
+<rml>
+<head>
+  <link type="text/rcss" href="splat_vr_panel.rcss"/>
+</head>
+<body data-model="splat_vr_viewer" class="svr-panel">
+
+  <div class="svr-section">
+    <span class="svr-heading">Splat VR Viewer</span>
+    <span class="svr-hint">View the loaded Gaussian Splat in a VR-ready window</span>
+  </div>
+
+  <div class="svr-section">
+    <span class="svr-label">Target:</span>
+    <span class="svr-value" data-class-svr-dim="!has_target">{{target_label}}</span>
+  </div>
+
+  <div data-if="has_target" class="svr-section">
+    <span class="svr-label">Gaussians:</span>
+    <span class="svr-value">{{gaussian_count}}</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="svr-section">
+    <span class="svr-label">Status:</span>
+    <span class="svr-value" data-class-status-error="is_error">{{status_text}}</span>
+  </div>
+
+  <div data-if="show_server_url" class="svr-section">
+    <span class="svr-label">Server:</span>
+    <span class="svr-value svr-mono">{{server_url}}</span>
+  </div>
+
+  <div class="separator"></div>
+
+  <div class="svr-buttons">
+    <div data-if="!is_running">
+      <button class="btn btn--primary svr-btn"
+              data-event-click="launch"
+              data-attrif-disabled="!has_target">{{launch_label}}</button>
+    </div>
+    <div data-if="is_running">
+      <button class="btn btn--secondary svr-btn"
+              data-event-click="refresh">{{refresh_label}}</button>
+      <button class="btn btn--error svr-btn"
+              data-event-click="stop">{{stop_label}}</button>
+    </div>
+  </div>
+
+</body>
+</rml>

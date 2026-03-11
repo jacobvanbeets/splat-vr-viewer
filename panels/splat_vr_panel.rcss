@@ -1,0 +1,69 @@
+body.svr-panel {
+    padding: 12dp 14dp;
+}
+
+.svr-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2dp;
+    padding: 4dp 0;
+}
+
+.svr-heading {
+    font-size: 13dp;
+    font-weight: bold;
+    color: #cdd6f4;
+}
+
+.svr-hint {
+    font-size: 10dp;
+    color: #6c7086;
+    padding-bottom: 4dp;
+}
+
+.svr-label {
+    font-size: 10dp;
+    color: #a6adc8;
+}
+
+.svr-value {
+    font-size: 11dp;
+    color: #cdd6f4;
+}
+
+.svr-dim {
+    color: #585b70;
+}
+
+.svr-mono {
+    font-size: 10dp;
+    color: #94e2d5;
+}
+
+.status-error {
+    color: #f38ba8;
+}
+
+.svr-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6dp;
+    padding: 6dp 0;
+}
+
+.svr-btn {
+    width: 100%;
+    padding: 6dp 12dp;
+    font-size: 11dp;
+}
+
+.btn--error {
+    background-color: #45242a;
+    color: #f38ba8;
+    border-width: 1dp;
+    border-color: #f38ba8;
+}
+
+.btn--error:hover {
+    background-color: #5c2d35;
+}
