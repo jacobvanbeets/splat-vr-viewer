@@ -19,11 +19,38 @@ _server: Optional[HTTPServer] = None
 _server_thread: Optional[threading.Thread] = None
 
 
+# Explicit MIME types — Windows registry entries can be broken/missing,
+# which causes ES modules to be rejected by the browser.
+_MIME_OVERRIDES = {
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".css": "text/css",
+    ".html": "text/html",
+    ".json": "application/json",
+    ".wasm": "application/wasm",
+    ".ply": "application/octet-stream",
+}
+
+
 class _QuietHandler(SimpleHTTPRequestHandler):
-    """Serves files from a fixed directory without printing every request."""
+    """Serves files from a fixed directory with reliable MIME types."""
+
+    def guess_type(self, path):
+        ext = Path(path).suffix.lower()
+        return _MIME_OVERRIDES.get(ext, super().guess_type(path))
 
     def log_message(self, format, *args):  # noqa: A002
         pass  # suppress console spam
+
+
+class _QuietServer(HTTPServer):
+    """HTTPServer that silences harmless ConnectionResetError tracebacks."""
+
+    def handle_error(self, request, client_address):
+        import sys
+        if isinstance(sys.exc_info()[1], ConnectionResetError):
+            return  # browser hung up mid-transfer — harmless
+        super().handle_error(request, client_address)
 
 
 def _write_config(viewer_dir: Path, node_name: str, settings_path: Path) -> None:
@@ -69,7 +96,7 @@ def launch_viewer(ply_path: str, node_name: str, viewer_dir: Path) -> None:
     handler = partial(_QuietHandler, directory=str(viewer_dir))
 
     # Bind to an ephemeral port on localhost
-    _server = HTTPServer(("127.0.0.1", 0), handler)
+    _server = _QuietServer(("127.0.0.1", 0), handler)
     port = _server.server_address[1]
 
     _server_thread = threading.Thread(
